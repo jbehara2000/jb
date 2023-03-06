@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>OWID Choropleth Map with Tooltips</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v2.min.js"></script>
+   
+
+    <style>
+        .legend rect {
+  stroke-width: 2px;
+}
+
+.tooltip {
+  opacity: 0;
+}
+
+.arc path:hover {
+  opacity: 0.7;
+}
+
+.bar {
+        fill: steelblue;
+      }
+      .axis {
+        font-size: 14px;
+      }
+      .tooltip {
+        position: absolute;
+        text-align: center;
+        width: 80px;
+        height: 40px;
+        padding: 2px;
+        font: 12px sans-serif;
+        background: lightsteelblue;
+        border: 0px;
+        pointer-events: none;
+      }
+
+      
+	
+
+	
+	 #chart path{
+        border: 1px solid red;
+        stroke: rgb(0, 0, 0);
+        stroke-width: 1.5px;
+      }
+      path {
+        stroke: black;
+        stroke-width: 0.8px;
+		margin-left:600px;
+      }
+	  
+     
+      #tooltip {
+        position: absolute;
+        z-index: 999;
+        padding: 8px;
+        background-color: white;
+        border: 1px solid #000;
+        font-size: 14px;
+        font-weight: bold;
+        pointer-events: none;
+      }
+	  
+	  #chart3 path{
+	  margin:500px;
+}
+.chart4 {
+      margin:900px;
+margin-top:2000px;	  
+	}
+    
+    .tooltip {
+            position: absolute;
+            text-align: center;
+            width: 80px;
+            height: 40px;
+            padding: 1px;
+            font-size: 15px;
+            font-weight: bold;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.9s;
+        }
+
+        .arc:hover .tooltip {
+            opacity: 6;
+        }
+	  
+	      #chart {
+        width: 800px;
+        height: 400px;
+        margin: 50px;
+      }
+      .bar {
+        fill: #2d9cdb;
+      }
+      .bar:hover {
+        fill: #2251a3;
+      }
+	  
+    
+  .kmeans-chart {
+    font-family: "Open Sans", Arial, Helvetica, sans-serif;
+    font-size: 9px;
+    fill: #ccc;
+  }
+
+  .kmeans-chart .centroid {
+    stroke: #000;
+    stroke-width: 2px;
+  }
+
+  .kmeans-chart text.label {
+    font-size: 12px;
+    fill: #333;
+  }
+
+  .kmeans-chart .axis line, .axis path {
+    fill: none;
+    stroke-width: 1px;
+    stroke: #ccc;
+    shape-rendering: crispEdges;
+  }
+body{
+    background-color: navajowhite;
+}
+	  
+    </style>
+  </head>
+
+
+
+  <br>
+  <h1>World Map</h1>
+  <div id="tooltip"></div>
+  <svg width="960" height="600"></svg>
+  <br><br>
+  <h1>continent vs total cases</h1>
+  <div id="chart"></div>
+  <br><br>
+  <h1>animated pie chart</h1>
+  <div id="chart4"></div>
+  <br><br>
+  <h1>circular bar chart</h1>
+  <div id="chart1"></div>
+  <br><br>
+  <h1>scatter plot for Europe GDP per Capita</h1>
+  <div id="chart2"></div>
+  
+  <div id="chart5" ></div>
+
+
+
+<!-- Load d3.js and the geo projection plugin -->
+<script src="https://d3js.org/d3.v7.js"></script>
+<script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+
+
+
+  
+  
+  
+   <script>
+
+
+    
+    const svg = d3.select("svg");
+    const width = +svg.attr("width");
+    const height = +svg.attr("height");
+  
+    const colorScale = d3.scaleSequential(d3.interpolateOranges).domain([0, 1]);
+  
+    const projection = d3
+      .geoMercator()
+      .scale(130)
+      .translate([width / 2, height / 1.4]);
+  
+    const path = d3.geoPath().projection(projection);
+  
+    d3.json(
+      "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson"
+    ).then(function (data) {
+      d3.csv(
+        "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"
+      ).then(function (covidData) {
+        const latestData = d3.rollup(
+          covidData.filter((d) => d.date === "2022-01-01"),
+          (v) => v[0].total_cases_per_million,
+          (d) => d.location
+        );
+  
+        data.features.forEach((d) => {
+          d.value = latestData.get(d.properties.name) ?? 0;
+        });
+  
+        svg
+          .selectAll("path")
+          .data(data.features)
+          .enter()
+          .append("path")
+          .attr("d", path)
+          .attr("fill", (d) => colorScale(d.value / 100000))
+          .attr("title", (d) => `${d.properties.name}: ${d.value}`)
+          .on("mouseover", function (event, d) {
+            d3.select(this).style("opacity", 0.5);
+            d3.select("#tooltip")
+              .style("left", event.pageX + "px")
+              .style("top", event.pageY - 28 + "px")
+              .text(`${d.properties.name}: ${d.value}`);
+          })
+          .on("mouseout", function () {
+            d3.select(this).style("opacity", 1);
+            d3.select("#tooltip").text("");
+
+            // Define the color scale bar
+const defs = svg.append("defs");
+const gradient = defs
+  .append("linearGradient")
+  .attr("id", "gradient")
+  .attr("x1", "0%")
+  .attr("y1", "0%")
+  .attr("x2", "100%")
+  .attr("y2", "0%");
+
+// Define the colors and positions of the gradient stops
+gradient
+  .append("stop")
+  .attr("offset", "0%")
+  .attr("stop-color", colorScale(1))
+  .attr("stop-opacity", 1);
+
+gradient
+  .append("stop")
+  .attr("offset", "100%")
+  .attr("stop-color", colorScale(0))
+  .attr("stop-opacity", 1);
+
+// Add the color scale bar
+const legend = svg.append("g").attr("id", "legend");
+
+legend
+  .append("rect")
+  .attr("x", 20)
+  .attr("y", height - 15)
+  .attr("width", width - 40)
+  .attr("height", 20)
+  .style("fill", "url(#gradient)");
+
+// Add the legend text
+const minCases = d3.min(data.features, (d) => d.value);
+const maxCases = d3.max(data.features, (d) => d.value);
+legend
+  .append("text")
+  .attr("x", 25)
+  .attr("y", height - 20)
+  .style("text-anchor", "start")
+  .style("font-size", "12px")
+  .text("max cases")
+
+legend
+  .append("text")
+  .attr("x", width - 25)
+  .attr("y", height - 20)
+  .style("text-anchor", "end")
+  .style("font-size", "12px")
+  .text("min cases");
+
+          });
+      });
+    });
+    
+    //map2
+    const svg2 = d3.select("#chart")
+      .append("svg")
+      .attr("width", 1000)
+      .attr("height", 500);
+  
+  
+    const margin = { top: 50, right: 50, bottom: 50, left: 100 };
+  
+    const width2 = 1000 - margin.left - margin.right;
+    const height2 = 500 - margin.top - margin.bottom;
+  
+    const chart = svg2.append("g")
+      .attr("transform", `translate(${margin.left}, ${margin.top})`);
+  
+    d3.csv("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv").then(function(data) {
+      const groupedData = d3.rollup(data, v => d3.sum(v, d => d.total_cases), d => d.continent);
+      const dataArray = Array.from(groupedData, ([continent, cases]) => ({ continent, cases }));
+  
+      // Create x and y scales
+      const xScale = d3.scaleBand()
+        .domain(dataArray.map(d => d.continent))
+        .range([0, width2])
+        .padding(0.2);
+  
+      const yScale = d3.scaleLinear()
+        .domain([0, d3.max(dataArray, d => d.cases)])
+.range([height2, 0]);
+// Create x and y axes
+const xAxis = d3.axisBottom(xScale);
+const yAxis = d3.axisLeft(yScale);
+
+chart.append("g")
+  .attr("transform", `translate(0, ${height2})`)
+  .call(xAxis);
+
+chart.append("g")
+  .call(yAxis);
+
+// Create bars
+const bars = chart.selectAll(".bar")
+  .data(dataArray)
+  .enter()
+  .append("rect")
+  .attr("class", "bar")
+  .attr("x", d => xScale(d.continent))
+  .attr("y", height2)
+  .attr("width", xScale.bandwidth())
+  .attr("height", 0);
+
+// Add animation
+bars.transition()
+  .duration(3000)
+  .attr("y", d => yScale(d.cases))
+  .attr("height", d => height2 - yScale(d.cases));
+});
+
+
+
+// COVID-19 cases data
+const data4 = [
+{ country: "UAE", cases: 736224 },
+{ country: "Qatar", cases: 231816 },
+{ country: "UK", cases: 6837623 }
+];
+
+// Create a pie chart
+const width4 = 500;
+const height4 = 500;
+const radius = Math.min(width4, height4) / 2;
+
+const svg4 = d3.select("#chart4")
+.append("svg")
+.attr("width", width4)
+.attr("height", height4)
+.append("g")
+.attr("transform", `translate(${width4 / 2}, ${height4 / 2})`);
+
+
+const color = d3.scaleOrdinal()
+.domain(data4.map(d => d.country))
+.range(d3.schemeCategory10);
+
+const pie = d3.pie()
+.value(d => d.cases);
+
+const arc = d3.arc()
+.innerRadius(0)
+.outerRadius(radius);
+
+const arcs = svg4.selectAll("arc")
+.data(pie(data4))
+.enter()
+.append("g")
+.attr("class", "arc");
+
+arcs.append("path")
+.attr("d", arc)
+.attr("fill", d => color(d.data.country))
+.on("mouseover", function (d) {
+d3.select(this)
+.transition()
+.duration(150)
+.attr("transform", function (d) {
+const centroid = arc.centroid(d);
+const x = centroid[0];
+const y = centroid[0];
+const angle = Math.atan2(y, x) * 2 / Math.PI;
+return `translate(${centroid[0]}, ${centroid[0]}) rotate(${angle})`;
+});
+d3.select(this).select(".tooltip").style("opacity", 1);
+})
+.on("mouseout", function (d) {
+d3.select(this)
+.transition()
+.duration(500)
+.attr("transform", "translate(0,0)");
+d3.select(this).select(".tooltip").style("opacity", 0);
+});
+
+arcs.append("text")
+.attr("transform", d =>  `translate(${arc.centroid(d)})`)
+.attr("text-anchor", "middle")
+.text(d => `${d.data.country}: ${d.data.cases}`);
+
+arcs.append("foreignObject")
+.attr("class", "tooltip")
+.attr("x", 0)
+.attr("y", 0)
+            .attr("width", width)
+.attr("height", height)
+
+.html(d => `<p>${d.data.country}</p><p>${d.data.cases}</p>`);
+
+     // Set the dimensions of the canvas / graph
+     const margin5 = { top: 80, right: 100, bottom: 200, left: 70 };
+const width5 = window.innerWidth - margin5.left - margin5.right - 20;
+const height5 = 500 - margin5.top - margin5.bottom;
+
+      
+      // Add the SVG element
+      const svg5 = d3.select("#chart5")
+        .append("svg")
+        .attr("width", width5 + margin5.left + margin5.right)
+        .attr("height", height5 + margin5.top + margin5.bottom)
+        .append("g")
+        .attr("transform", "translate(" + margin5.left + "," + margin5.top + ")");
+      
+      // Load the data from the OWID COVID-19 dataset
+      d3.csv("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/latest/owid-covid-latest.csv").then(function(data) {
+        
+        // Filter the data to only include the selected countries
+        const countries = ["United States", "India", "China", "Brazil", "Russia"];
+const filteredData = data.filter(d => countries.includes(d.location))
+
+        
+        // Sort the data by total cases
+        filteredData.sort((a, b) => d3.descending(+a.total_cases, +b.total_cases));
+        
+        // Define the color scale
+        const color = d3.scaleOrdinal()
+          .domain(countries)
+          .range(["steelblue", "darkorange", "green", "red", "purple"]);
+        
+        // Scale the range of the data
+        const x = d3.scaleBand()
+          .range([0, width5])
+          .domain(filteredData.map(d => d.location))
+          .padding(0.1);
+          const y1 = d3.scaleLinear()
+  .range([height5, 0])
+  .domain([0, d3.max(filteredData, d => +d.total_cases_per_million)*3.2]);
+
+        const y2 = d3.scaleLinear()
+          .range([height5, 0])
+          .domain([0, d3.max(filteredData, d => +d.total_deaths_per_million)]);
+          const y3 = d3.scaleLinear()
+  .range([height5, 0])
+  .domain([0, d3.max(filteredData, d => +d.hospital_beds_per_thousand) * 1.2]); 
+
+  const y4 = d3.scaleLinear()
+  .range([height5, 0])
+  .domain([0, d3.max(filteredData, d => +d.stringency_index)]);
+
+
+          
+        // Add the x-axis
+        svg5.append("g")
+          .attr("class", "x axis")
+          .attr("transform", "translate(" + (width5 + margin5.right) + ",0)")
+          .call(d3.axisBottom(x))
+          .selectAll("text")
+          .style("text-anchor", "end")
+          .attr("dx", "-.8em")
+          .attr("dy", ".15em")
+          .attr("transform", "rotate(-65)");
+      
+      // Add the y-axes
+      svg5.append("g")
+        .attr("class", "y axis")
+        .call(d3.axisLeft(y1));
+      svg5.append("g")
+        .attr("class", "y axis")
+        .attr("transform", "translate(" + width5 + ",0)")
+        .call(d3.axisRight(y2));
+      svg5.append("g")
+        .attr("class", "y axis")
+        .attr("transform", "translate(" + (width5 + margin5.right) + ",0)")
+        .call(d3.axisRight(y3));
+        svg5.append("g")
+  .attr("class", "y axis")
+  .attr("transform", "translate(" + (width5 + 2*margin5.right) + ",0)")
+  .call(d3.axisRight(y4));
+
+        
+// Add the bars for total cases
+svg5.selectAll(".bar")
+  .data(filteredData)
+  .enter().append("rect")
+  .attr("class", "bar")
+  .attr("x", d => x(d.location))
+  .attr("width", x.bandwidth())
+  .attr("y", d => y1(+d.total_cases_per_million))
+  .attr("height", d => height5 - y1(+d.total_cases_per_million))
+  .style("fill", d => color(d.location))
+ 
+// Add the bars for total deaths
+svg5.selectAll(".bar2")
+  .data(filteredData)
+  .enter().append("rect")
+  .attr("class", "bar2")
+  .attr("x", d => x(d.location) + x.bandwidth() / 4)
+  .attr("width", x.bandwidth() / 4)
+  .attr("y", d => y2(+d.total_deaths_per_million))
+  .attr("height", d => height5 - y2(+d.total_deaths_per_million))
+  .style("fill", d => color(d.location))
+
+// Add the bars for hospital beds
+svg5.selectAll(".bar3")
+  .data(filteredData)
+  .enter().append("rect")
+  .attr("class", "bar3")
+  .attr("x", d => x(d.location) + 2 * x.bandwidth() / 4)
+  .attr("width", x.bandwidth() / 4)
+  .attr("y", d => y3(+d.hospital_beds_per_thousand))
+  .attr("height", d => height5 - y3(+d.hospital_beds_per_thousand))
+  .style("fill", d => color(d.location))
+
+svg5.selectAll(".bar4")
+  .data(filteredData)
+  .enter().append("rect")
+  .attr("class", "bar4")
+  .attr("x", d => x(d.location) + 3 * x.bandwidth() / 4)
+  .attr("width", x.bandwidth() / 4)
+  .attr("y", d => y4(+d.stringency_index))
+  .attr("height", d => height5 - y4(+d.stringency_index))
+  .style("fill", d => color(d.location));
+ 
+
+
+ // Add the legend
+const legend = svg5.append("g")
+  .attr("font-family", "sans-serif")
+  .attr("font-size", 12)
+  .attr("text-anchor", "end")
+  .attr("transform", `translate(0,${height5 + margin5.top + 20})`) // adjust the translate attribute
+  .selectAll("g")
+  .data(countries)
+  .enter().append("g")
+  .attr("transform", (d, i) => `translate(0,${i * 20})`);
+legend.append("rect")
+  .attr("x", width5 + margin5.right - 20)
+  .attr("width", 15)
+  .attr("height", 15)
+  .attr("fill", color)
+  .attr("stroke", color)
+  .on("click", function(d) {
+    // Toggle the visibility of the corresponding bars
+    const active = !d3.select(this).classed("inactive");
+    const newOpacity = active ? 0 : 1;
+    d3.selectAll("." + d.toLowerCase())
+      .transition()
+      .duration(200)
+      .style("opacity", newOpacity);
+    d3.select(this).classed("inactive", !active);
+  });
+legend.append("text")
+  .attr("x", width5 + margin5.right - 30)
+  .attr("y", 9.5)
+  .attr("dy", "0.32em")
+  .text(d => d);
+
+    
+  // Add a tooltip element
+  const tooltip = d3.select("body")
+    .append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+    
+  // Add a title
+  svg5.append("text")
+    .attr("x", (width5 / 2))
+    .attr("y", 0 - (margin5.top / 2))
+    .attr("text-anchor", "middle")
+    .style("font-size", "24px")
+    .style("text-decoration", "underline")
+    .text("COVID-19 Outbreak in Selected Countries");
+
+    // Add text to explain Bar 1
+svg5.append("text")
+  .attr("x", x.bandwidth() / 2)
+  .attr("y", height5 + margin5.top + 20)
+  .attr("text-anchor", "middle")
+  .text("bar 1 : Total Cases per Million");
+  
+// Add text to explain Bar 2
+svg5.append("text")
+  .attr("x", x.bandwidth() / 1 + x.bandwidth())
+  .attr("y", height5 + margin5.top + 20)
+  .attr("text-anchor", "middle")
+  .text("bar 2 : Total Deaths per Million");
+  
+// Add text to explain Bar 3
+svg5.append("text")
+  .attr("x", x.bandwidth() / 2 + 3 * x.bandwidth())
+  .attr("y", height5 + margin5.top + 20)
+  .attr("text-anchor", "middle")
+  .text("bar 3 : Hospital Beds per Thousand");
+// Add text to explain Bar 4
+svg5.append("text")
+  .attr("x", x.bandwidth() / 5 + 5 * x.bandwidth())
+  .attr("y", height5 + margin5.top + 20)
+  .attr("text-anchor", "middle")
+  .text("bar 4 : Stringency Index");
+
+  
+
+    
+});
+
+
+
+
+
+ // scatter chart
+ d3.csv(
+          "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"
+        ).then(function (data) {
+          var dataset = data
+            .filter(function (d) {
+              return d.continent == "Europe" && !isNaN(+d.gdp_per_capita);
+            })
+            .map(function (d) {
+              return {
+                country: d.location,
+                gdp: +d.gdp_per_capita,
+              };
+            });
+
+          // Define the dimensions of the chart
+          var margin = { top: 20, right: 20, bottom: 70, left: 70 },
+            width = 700 - margin.left - margin.right,
+            height = 800 - margin.top - margin.bottom;
+            // var xAxis = d3.axisBottom(xScale);
+          // Create the SVG container for the chart
+          var svg = d3
+            .select("#chart2")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+
+            .attr(
+              "transform",
+              "translate(" + margin.left + "," + margin.top + ")"
+            );
+
+          // Define the scales for the x and y axes
+          var x = d3
+            .scaleLinear()
+            .domain([
+              0,
+              d3.max(dataset, function (d) {
+                return d.gdp;
+              }),
+            ])
+            .range([0, width]);
+
+          var y = d3
+            .scaleBand()
+            .domain(
+              dataset.map(function (d) {
+                return d.country;
+              })
+            )
+            .range([height, 0]);
+
+          // Create the x and y axes
+          var xAxis = d3.axisBottom(x);
+          var yAxis = d3.axisLeft(y);
+
+          // Add the x and y axes to the chart
+          svg
+            .append("g")
+            .attr("transform", "translate(0," + height + ")")
+            .call(xAxis);
+
+          svg.append("g").call(yAxis);
+
+          // Add the data points to the chart
+          svg
+            .selectAll(".dot")
+            .data(dataset)
+            .enter()
+            .append("circle")
+            .attr("class", "dot")
+            .attr("cx", function (d) {
+              return x(d.gdp);
+            })
+            .attr("cy", function (d) {
+              return y(d.country);
+            })
+            .attr("r", 5)
+            .on("mouseover", function (d) {
+              d3.select(this).attr("r", 10);
+              if (!isNaN(d.gdp)) {
+                svg
+                  .append("text")
+                  .attr("id", "tooltip")
+                  .attr("x", x(d.gdp) + 10)
+                  .attr("y", y(d.country) - 10)
+                  .text(d.country + "\nGDP per capita: $" + d.gdp.toFixed(2));
+              }
+            })
+            .on("mouseout", function () {
+              d3.select(this).attr("r", 5);
+            })
+            // Remove tooltip when the mouse leaves the circle
+            .on("mouseout", function () {
+              d3.select(this).attr("r", 5);
+              d3.select("#tooltip").remove();
+            });
+
+                // Load the data
+      d3.csv("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv").then(function (data) {
+        // Filter the data to include only the data for the desired countries
+        var countries = ["United States", "India", "Brazil", "Russia", "Mexico"];
+        var filteredData = data.filter(function (d) {
+          return countries.includes(d.location);
+        });
+
+        // Aggregate the total cases by country
+        var totalCasesByCountry = d3.rollup(
+          filteredData,
+          function (v) {
+            return d3.sum(v, function (d) {
+              return d.total_cases;
+            });
+          },
+          function (d) {
+            return d.location;
+          }
+        );
+
+        // Convert the total cases by country to an array
+        var totalCasesArray = Array.from(totalCasesByCountry, function (d) {
+          return { country: d[0], totalCases: d[1] };
+        });
+
+        // Sort the array by total cases in descending order
+        totalCasesArray.sort(function (a, b) {
+          return b.totalCases - a.totalCases;
+        });
+
+        // Set the dimensions and margins of the chart
+        var margin = { top: 20, right: 20, bottom: 20, left: 20 },
+          width = 600 - margin.left - margin.right,
+          height = 600 - margin.top - margin.bottom;
+
+        // Set the radius of the circular bar plot
+        var radius = Math.min(width, height) / 2;
+
+        // Set the color scale
+        var color = d3
+          .scaleOrdinal()
+          .domain(totalCasesArray.map(function (d) {
+            return d.country;
+          }))
+          .range(d3.schemeCategory10);
+
+        // Create the SVG container
+        var svg = d3
+          .select("#chart1")
+          .append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr(
+            "transform",
+            "translate(" + width / 2 + "," + height / 2 + ")"
+          );
+
+        // Compute the angles and positions of the bars
+        var pie = d3.pie().value(function (d) {
+          return d.totalCases;
+        });
+        var data_ready = pie(totalCasesArray);
+
+        // Define the arc generator
+        var arc = d3.arc().innerRadius(radius * 0.5).outerRadius(radius);
+
+        // Draw the bars
+        svg
+          .selectAll("mySlices")
+          .data(data_ready)
+          .enter()
+          .append("path")
+          .attr("d", arc)
+          .attr("fill", function (d) {
+            return color(d.data.country);
+          })
+          .attr("stroke", "white")
+          .style("stroke-width", "2px")
+          .style("opacity", 0.7);
+
+        // Add labels
+        svg
+          .selectAll("mySlices")
+          .data(data_ready)
+          .enter()
+          .append("text")
+          .text(function (d) {
+            return d.data.country;
+  })
+  .attr("transform", function (d) {
+    return "translate(" + arc.centroid(d) + ")";
+  })
+  .style("text-anchor", "middle")
+  .style("font-size", "12px");
+});
+
+        })
+
+
+
+ 
+
+ 
+
+
+        
+    
+    
+</script>
+
+
+
+<button onclick="update(datagdp1)">Continent Group 01 (GDP During 2020)</button>
+<button onclick="update(datagdp2)">Continent Group 02 (GDP During 2021)</button>
+<div id="my_dataviz1"></div>
+
+
+<script>
+	
+// create 2 data_set
+const datagdp1 = [
+   {group: "Asia", value: 366.04},
+   {group: "Europe", value:443.12},
+   {group: "Oceania", value: 31.87}
+];
+
+const datagdp2 = [
+   {group: "Asia", value: 420.06},
+   {group: "Europe", value: 511.41},
+   {group: "Oceania", value: 48.57}
+];
+
+// set the dimensions and margins of the graph
+const margin_gdp = {top: 30, right: 30, bottom: 70, left: 60},
+    width7 = 460 - margin_gdp.left - margin_gdp.right,
+    height7 = 400 - margin_gdp.top - margin_gdp.bottom;
+
+// append the svg object to the body of the page
+const svg_gdp = d3.select("#my_dataviz1")
+  .append("svg")
+    .attr("width", width7 + margin_gdp.left + margin_gdp.right)
+    .attr("height", height7 + margin_gdp.top + margin_gdp.bottom)
+  .append("g")
+    .attr("transform", `translate(${margin_gdp.left},${margin_gdp.top})`);
+
+// X axis
+const x_gdp = d3.scaleBand()
+  .range([ 0, width7 ])
+  .domain(datagdp1.map(d => d.group))
+  .padding(0.2);
+svg_gdp.append("g")
+  .attr("transform", `translate(0,${height7})`)
+  .call(d3.axisBottom(x_gdp))
+
+// Add Y axis
+const y_gdp = d3.scaleLinear()
+  .domain([0, 500])
+  .range([ height7, 0]);
+svg_gdp.append("g")
+  .attr("class", "myYaxis")
+  .call(d3.axisLeft(y_gdp));
+
+// A function that create / update the plot for a given variable:
+function update(data) {
+
+  var u = svg_gdp.selectAll("rect")
+    .data(data)
+
+    .join("rect")
+    .transition()
+    .duration(1000)
+      .attr("x", d => x_gdp(d.group))
+      .attr("y", d => y_gdp(d.value))
+      .attr("width", x_gdp.bandwidth())
+      .attr("height", d => height7 - y_gdp(d.value))
+      .attr("fill", "#69b3a2")
+}
+
+// Initialize the plot with the first dataset
+update(datagdp1)
+</script>
+</body>
+</html>
+  
+
